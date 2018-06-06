@@ -23,7 +23,8 @@ int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize) {
             read(stream->mapping.fd, &byte, 1 ); 
             stream->mapping.data[i] = byte;
             if ( byte == EOF ) {
-             return i;   
+                stream->eof = true;
+                return i;   
             }
         }
     } else {
@@ -37,7 +38,8 @@ int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize) {
             stream->mapping.data[topup] = byte;
             topup++;
             if ( byte == EOF ) {
-             return topup;   
+                stream->eof = true;
+                return topup;   
             }
         }
     }

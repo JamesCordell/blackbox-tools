@@ -1117,8 +1117,11 @@ int decodeFlightLog(flightLog_t *log, const char *filename, int logIndex)
 
     resetParseState();
 
-    int success = flightLogParse(log, logIndex, onMetadataReady, onFrameReady, onEvent, options.raw);
-
+    int success =0;
+    while (1) {
+    success = flightLogParse(log, logIndex, onMetadataReady, onFrameReady, onEvent, options.raw);
+    }
+    
     if (options.mergeGPS && haveBufferedMainFrame) {
         // Print out last log entry that wasn't already printed
         outputMergeFrame(log);
