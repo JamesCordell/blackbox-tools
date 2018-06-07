@@ -26,6 +26,8 @@ typedef enum FirmwareType {
 	FIRMWARE_TYPE_BETAFLIGHT
 } FirmwareType;
 
+
+
 typedef struct flightLogFrameStatistics_t {
     uint32_t bytes;
     // Frames decoded to the right length and had reasonable data in them:

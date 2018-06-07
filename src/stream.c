@@ -12,20 +12,16 @@
 #include "parser.h"
 #include "stream.h"
 
-int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize) {
+int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize,ParserState *parserState) {
     size_t bytes_read =0;
     int byte;
 
     bytes_read = bytesParsedDataSize;
-    
+    char *ret = NULL;
     if ( bytesParsedDataSize >= FLIGHT_LOG_MAX_FRAME_LENGTH ) { // First fill
         for ( size_t i=0;i < FLIGHT_LOG_MAX_FRAME_LENGTH;++i ) { //fill the rest of the buffer
             read(stream->mapping.fd, &byte, 1 ); 
             stream->mapping.data[i] = byte;
-            if ( byte == EOF ) {
-                stream->eof = true;
-                return i;   
-            }
         }
     } else {
         while ( bytes_read <  FLIGHT_LOG_MAX_FRAME_LENGTH ) { //move data down to beginning of buffer.
@@ -37,15 +33,20 @@ int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize) {
             read(stream->mapping.fd, &byte, 1 ); 
             stream->mapping.data[topup] = byte;
             topup++;
-            if ( byte == EOF ) {
-                stream->eof = true;
-                return topup;   
-            }
+        }
+        ret = strstr(stream->mapping.data,"Nicholas Sherlock\n");  
+        if ( ret != NULL ) {printf("We hit new stream %li\n",(ret+17) - stream->pos  );
+        *parserState = PARSER_STATE_HEADER;
+        stream->pos = ret;
+        return 0;
         }
     }
-
-    stream->pos = stream->mapping.data;
-    return bytes_read;
+    //stream->pos = stream->mapping.data;
+  
+        stream->pos = stream->mapping.data;
+        //*parserState = PARSER_STATE_DATA;
+        
+    return 0;
 }
 
 uint32_t streamReadUnsignedVB(mmapStream_t *stream)

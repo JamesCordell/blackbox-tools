@@ -33,12 +33,6 @@
 
 static bool runonce = false;
 
-typedef enum ParserState
-{
-    PARSER_STATE_HEADER = 0,
-    PARSER_STATE_DATA
-} ParserState;
-
 typedef void (*FlightLogFrameParse)(flightLog_t *log, mmapStream_t *stream, bool raw);
 typedef bool (*FlightLogFrameComplete)(flightLog_t *log, mmapStream_t *stream, uint8_t frameType, const char *frameStart, const char *frameEnd, bool raw);
 
@@ -1331,22 +1325,21 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
     private->stream->end = log->logBegin[logIndex + 1];
     private->stream->eof = false;
 
-
     if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR && runonce == false) { //prime data buffer with data
-    fillSerialBuffer(private->stream,FLIGHT_LOG_MAX_FRAME_LENGTH);
+    fillSerialBuffer(private->stream,FLIGHT_LOG_MAX_FRAME_LENGTH,&parserState);
     runonce = true;
     }
     
     while (1) {
         char command = streamPeekChar(private->stream);
-        frameType = getFrameType( command );printf("command:%c hex:%02x\n",command,command);
+        frameType = getFrameType( command );printf("command:%c hex:%02x parserState:%i\n",command,command,parserState);
 
         if ( command == 'H' && parserState == PARSER_STATE_HEADER ) {
 
             size_t frameSize = parseHeaderLine(log, private->stream);
 
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //top up data buffer with data
-                fillSerialBuffer(private->stream,frameSize);
+                fillSerialBuffer(private->stream,frameSize,parserState);
             }
 
             if ( frameType ) {
@@ -1356,7 +1349,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
         }
         if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == PARSER_STATE_HEADER ) {//This is run once after the headder, some assertions.
             if (log->frameDefs['I'].fieldCount == 0) {
-                fprintf(stderr, "Data file is missing field name definitions\n");fillSerialBuffer(private->stream,1);
+                fprintf(stderr, "Data file is missing field name definitions\n");fillSerialBuffer(private->stream,1,&parserState);
                 return false;
             }
             /* Home coord predictors appear in pairs (lat/lon), but the predictor ID is the same for both. It's easier to
@@ -1392,7 +1385,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
                         log->stats.frame[frameType->marker].sizeCount[frameSize+1]++;
                         log->stats.frame[frameType->marker].validCount++;
                         if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //fill data buffer with data
-                            fillSerialBuffer(private->stream,frameSize+1);printf("Good frame\n");
+                            fillSerialBuffer(private->stream,frameSize+1,&parserState);
                         }
                     } else {
                         log->stats.frame[frameType->marker].desyncCount++;
@@ -1404,9 +1397,11 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
                         }
                         private->stream->pos = previousPos;
                         if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //fill data buffer with data
-                            fillSerialBuffer(private->stream,1);
+                            fillSerialBuffer(private->stream,1,&parserState);
                         }
                     }
+                } else {
+                private->stream->pos = previousPos;
                 }
             } else {
                 private->mainStreamIsValid = false;
@@ -1414,15 +1409,11 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
 
         } else {
 
-         //parserState = PARSER_STATE_HEADER;
-            printf("command:%c hex:%02x\n",command,command);
-            char *ret = strstr(private->stream->pos,LOG_START_MARKER);
-            printf("We found junk ret:%s\n",ret);
-            if ( ret != NULL ) {
-                break;
-            }
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) {
-            fillSerialBuffer(private->stream,1);//getchar();
+            fillSerialBuffer(private->stream,1,&parserState);
+            if ( parserState ==  PARSER_STATE_HEADER ) {getchar();
+             break;   
+            }
             } else {
                 if ( private->stream->eof) {
                     break;
