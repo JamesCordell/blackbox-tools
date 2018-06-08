@@ -17,7 +17,12 @@ int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize,ParserState
     int byte;
 
     bytes_read = bytesParsedDataSize;
-    char *ret = NULL;
+    //char *ret = NULL;
+    if ( strstr( stream->mapping.data ,"H") && strstr( stream->mapping.data+1 ," ") && strstr( stream->mapping.data+2 ,"P") && strstr( stream->mapping.data+2 ,"r") ) { //new stream found
+        *parserState = PARSER_STATE_HEADER;getchar();
+        
+    }
+    
     if ( bytesParsedDataSize >= FLIGHT_LOG_MAX_FRAME_LENGTH ) { // First fill
         for ( size_t i=0;i < FLIGHT_LOG_MAX_FRAME_LENGTH;++i ) { //fill the rest of the buffer
             read(stream->mapping.fd, &byte, 1 ); 
@@ -34,17 +39,9 @@ int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize,ParserState
             stream->mapping.data[topup] = byte;
             topup++;
         }
-        ret = strstr(stream->mapping.data,"Nicholas Sherlock\n");  
-        if ( ret != NULL ) {printf("We hit new stream %li\n",(ret+17) - stream->pos  );
-        *parserState = PARSER_STATE_HEADER;
-        stream->pos = ret;
-        return 0;
-        }
     }
-    //stream->pos = stream->mapping.data;
-  
-        stream->pos = stream->mapping.data;
-        //*parserState = PARSER_STATE_DATA;
+
+    stream->pos = stream->mapping.data;
         
     return 0;
 }

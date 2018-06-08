@@ -286,7 +286,7 @@ static void identifyFields(flightLog_t * log, uint8_t frameType, flightLogFrameD
     }
 }
 
-static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream)
+static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState *parserState)
 {
     char *fieldName, *fieldValue;
     const char *lineStart, *lineEnd, *separatorPos;
@@ -334,7 +334,7 @@ static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream)
 
     fieldName = valueBuffer;
     valueBuffer[separatorPos - lineStart] = '\0';
-
+if ( strstr(fieldName,"features") ) {printf("found end of headder\n");getchar(); *parserState = 3; }
     fieldValue = valueBuffer + (separatorPos - lineStart) + 1;
     valueBuffer[lineEnd - lineStart - 1] = '\0';
 
@@ -1332,14 +1332,14 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
     
     while (1) {
         char command = streamPeekChar(private->stream);
-        frameType = getFrameType( command );printf("command:%c hex:%02x parserState:%i\n",command,command,parserState);
+        frameType = getFrameType( command );printf("command:%c hex:%02x parserState:%i\n",command,command,parserState);//getchar();
 
         if ( command == 'H' && parserState == PARSER_STATE_HEADER ) {
 
-            size_t frameSize = parseHeaderLine(log, private->stream);
+            size_t frameSize = parseHeaderLine(log, private->stream,&parserState);
 
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //top up data buffer with data
-                fillSerialBuffer(private->stream,frameSize,parserState);
+                fillSerialBuffer(private->stream,frameSize,&parserState);
             }
 
             if ( frameType ) {
@@ -1347,7 +1347,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
             }
             continue;
         }
-        if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == PARSER_STATE_HEADER ) {//This is run once after the headder, some assertions.
+        if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == 3 ) {//This is run once after the headder, some assertions.
             if (log->frameDefs['I'].fieldCount == 0) {
                 fprintf(stderr, "Data file is missing field name definitions\n");fillSerialBuffer(private->stream,1,&parserState);
                 return false;
@@ -1365,7 +1365,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
             if (onMetadataReady) {
                 onMetadataReady(log);
             }
-            parserState = PARSER_STATE_DATA;
+        parserState = PARSER_STATE_DATA;
         }
         if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == PARSER_STATE_DATA ) {
 
@@ -1411,16 +1411,15 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
 
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) {
             fillSerialBuffer(private->stream,1,&parserState);
-            if ( parserState ==  PARSER_STATE_HEADER ) {getchar();
-             break;   
-            }
+                if ( parserState ==  PARSER_STATE_HEADER ) {getchar();
+                    break;
+                }
             } else {
                 if ( private->stream->eof) {
                     break;
                 }
                 streamReadByte(private->stream);
             }
-
         }
     }
 
