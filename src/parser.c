@@ -290,44 +290,49 @@ static void identifyFields(flightLog_t * log, uint8_t frameType, flightLogFrameD
     }
 }
 
-static void parseHeaderLine(flightLog_t *log, mmapStream_t *stream)
+static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream)
 {
     char *fieldName, *fieldValue;
     const char *lineStart, *lineEnd, *separatorPos;
-    int i, c;
-    char valueBuffer[1024];
+    char valueBuffer[FLIGHT_LOG_MAX_FRAME_LENGTH] = {0};
     union {
         float f;
         uint32_t u;
     } floatConvert;
 
-    if (streamPeekChar(stream) != ' ')
-        return;
+    if (streamReadChar(stream) != 'H')
+        return 0;
 
-    //Skip the space
-    stream->pos++;
+    if (streamReadChar(stream) != ' ')
+        return 1;
 
     lineStart = stream->pos;
     separatorPos = 0;
+    size_t frameSize=0;
 
-    for (i = 0; i < 1024; i++) {
-        c = streamReadChar(stream);
+    while ( frameSize < FLIGHT_LOG_MAX_FRAME_LENGTH ) {
+        char c = streamReadChar(stream);
 
         if (c == ':' && !separatorPos) {
             separatorPos = stream->pos - 1;
         }
 
-        if (c == '\n')
+        if (c == '\n') {
+            frameSize++;
             break;
+        }
 
-        if (c == EOF || c == '\0')
+        if (c == EOF || c == '\0') {
             // Line ended before we saw a newline or it has binary stuff in there that shouldn't be there
-            return;
-        valueBuffer[i] = c;
+            return frameSize;
+        }
+        valueBuffer[frameSize] = c;
+        frameSize++;
     }
+    frameSize += 2;//We read two bytes above.
 
     if (!separatorPos)
-        return;
+        return frameSize;
 
     lineEnd = stream->pos;
 
@@ -431,6 +436,7 @@ static void parseHeaderLine(flightLog_t *log, mmapStream_t *stream)
 		log->sysConfig.motorOutputLow = motorOutputs[0];
 		log->sysConfig.motorOutputHigh = motorOutputs[1];
      }
+     return frameSize;
 }
 
 /**
@@ -1321,7 +1327,8 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
     private->stream->eof = false;
 
     while (1) {
-        int command = streamReadByte(private->stream);
+        char command = streamPeekChar(private->stream);
+        frameType = getFrameType( command );
 
         switch (parserState) {
             case PARSER_STATE_HEADER:
@@ -1336,7 +1343,6 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
                         frameType = getFrameType(command);
 
                         if (frameType) {
-                            streamUnreadChar(private->stream);
 
                             if (log->frameDefs['I'].fieldCount == 0) {
                                 fprintf(stderr, "Data file is missing field name definitions\n");
@@ -1365,7 +1371,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
             break;
             case PARSER_STATE_DATA:
                 if (lastFrameType) {
-                    const char *frameEnd = private->stream->pos - 1; //-1 because we've already read 1 byte of the next frame
+                    const char *frameEnd = private->stream->pos;
                     unsigned int lastFrameSize = frameEnd - frameStart;
 
                     // Is this the beginning of a new frame?
