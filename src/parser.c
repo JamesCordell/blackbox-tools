@@ -1320,7 +1320,6 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
 
     while (1) {
         char command = streamPeekChar(private->stream);
-        frameType = getFrameType( command );
 
         if ( command == 'H' && parserState == PARSER_STATE_HEADER ) {
 
@@ -1329,7 +1328,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //top up data buffer with data
                 fillSerialBuffer(private->stream,frameSize,&parserState);
             }
-
+            frameType = getFrameType( command );
             if ( frameType ) {
             log->stats.frame[frameType->marker].validCount++;
             }
@@ -1358,6 +1357,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
         if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == PARSER_STATE_DATA ) {
 
             unsigned int frameSize=0;
+            frameType = getFrameType( command );
             if ( frameType ) {
                 streamReadByte(private->stream);//progress pos move past Headder letter H,P,I,G,S,E
                 const char *previousPos = private->stream->pos;
