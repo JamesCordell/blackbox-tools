@@ -1321,10 +1321,10 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
     while (1) {
         char command = streamPeekChar(private->stream);
 
-        if ( command == 'H' && parserState == PARSER_STATE_HEADER ) {
-            size_t frameSize = parseHeaderLine(log, private->stream,&parserState);
+        if (command == 'H' && parserState == PARSER_STATE_HEADER) {
+            size_t frameSize = parseHeaderLine(log, private->stream, &parserState);
             if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) { //top up data buffer with data
-                fillSerialBuffer(private->stream,frameSize,&parserState);
+                fillSerialBuffer(private->stream, frameSize, &parserState);
             }
             frameType = getFrameType( command );
             if ( frameType ) {
