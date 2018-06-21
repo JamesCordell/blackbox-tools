@@ -1116,6 +1116,10 @@ int decodeFlightLog(flightLog_t *log, const char *filename, int logIndex)
     }
 
     resetParseState();
+    
+    if ((log->private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR) { //prime data buffer with data
+        fillSerialBuffer(log->private->stream, FLIGHT_LOG_MAX_FRAME_LENGTH, NULL);
+    }
 
     int success =0;
     while (1) {

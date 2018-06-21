@@ -31,7 +31,6 @@
 //Likewise for iteration count
 #define MAXIMUM_ITERATION_JUMP_BETWEEN_FRAMES (500 * 10)
 
-static bool runonce = false;
 union {
     float f;
     uint32_t u;
@@ -1317,11 +1316,6 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
     private->stream->end = log->logBegin[logIndex + 1];
     private->stream->eof = false;
 
-    if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR && runonce == false) { //prime data buffer with data
-    fillSerialBuffer(private->stream,FLIGHT_LOG_MAX_FRAME_LENGTH,&parserState);
-    runonce = true;
-    }
-    
     while (1) {
         char command = streamPeekChar(private->stream);
         frameType = getFrameType( command );printf("command:%c hex:%02x parserState:%i\n",command,command,parserState);//getchar();
@@ -1349,7 +1343,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
                 */
             for (int i = 1; i < log->frameDefs['G'].fieldCount; i++) {
                 if (log->frameDefs['G'].predictor[i - 1] == FLIGHT_LOG_FIELD_PREDICTOR_HOME_COORD &&
-                        log->frameDefs['G'].predictor[i] == FLIGHT_LOG_FIELD_PREDICTOR_HOME_COORD) {
+                    log->frameDefs['G'].predictor[i] == FLIGHT_LOG_FIELD_PREDICTOR_HOME_COORD) {
                     log->frameDefs['G'].predictor[i] = FLIGHT_LOG_FIELD_PREDICTOR_HOME_COORD_1;
                 }
             }
