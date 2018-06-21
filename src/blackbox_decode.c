@@ -1116,13 +1116,13 @@ int decodeFlightLog(flightLog_t *log, const char *filename, int logIndex)
     }
 
     resetParseState();
-    
+
     if ((log->private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR) { //prime data buffer with data
         fillSerialBuffer(log->private->stream, FLIGHT_LOG_MAX_FRAME_BUFFER_LENGTH, NULL);
     }
 
     int success = flightLogParse(log, logIndex, onMetadataReady, onFrameReady, onEvent, options.raw);
-    
+
     if (options.mergeGPS && haveBufferedMainFrame) {
         // Print out last log entry that wasn't already printed
         outputMergeFrame(log);
