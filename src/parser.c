@@ -331,7 +331,7 @@ static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState
     char *fieldName = valueBuffer;
     valueBuffer[separatorPos - lineStart] = '\0';
     if ( strstr(fieldName,"features") ) {
-        *parserState = 3;
+        *parserState = PARSER_STATE_TRANSITION;
     }
     char *fieldValue = valueBuffer + (separatorPos - lineStart) + 1;
     valueBuffer[lineEnd - lineStart - 1] = '\0';
@@ -1335,7 +1335,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
             }
             continue;
         }
-        if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == 3 ) {//This is run once after the headder, some assertions.
+        if ( (command == 'P' || command == 'I' || command == 'G' || command == 'S' || command == 'E') && parserState == PARSER_STATE_TRANSITION) {//This is run once after the headder, some assertions.
             if (log->frameDefs['I'].fieldCount == 0) {
                 fprintf(stderr, "Data file is missing field name definitions\n");fillSerialBuffer(private->stream,1,&parserState);
                 return false;

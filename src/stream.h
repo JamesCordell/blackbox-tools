@@ -24,6 +24,7 @@ typedef struct mmapStream_t {
 
 typedef enum ParserState {
     PARSER_STATE_HEADER = 0,
+    PARSER_STATE_TRANSITION,
     PARSER_STATE_DATA
 } ParserState;
 
