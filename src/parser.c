@@ -330,7 +330,9 @@ static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState
 
     char *fieldName = valueBuffer;
     valueBuffer[separatorPos - lineStart] = '\0';
-if ( strstr(fieldName,"features") ) {printf("found end of headder\n");getchar(); *parserState = 3; }
+    if ( strstr(fieldName,"features") ) {
+        *parserState = 3;
+    }
     char *fieldValue = valueBuffer + (separatorPos - lineStart) + 1;
     valueBuffer[lineEnd - lineStart - 1] = '\0';
 
@@ -1318,7 +1320,7 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
 
     while (1) {
         char command = streamPeekChar(private->stream);
-        frameType = getFrameType( command );printf("command:%c hex:%02x parserState:%i\n",command,command,parserState);//getchar();
+        frameType = getFrameType( command );
 
         if ( command == 'H' && parserState == PARSER_STATE_HEADER ) {
 
