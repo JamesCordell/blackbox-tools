@@ -12,38 +12,38 @@
 #include "parser.h"
 #include "stream.h"
 
-int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize,ParserState *parserState) {
-    size_t bytes_read =0;
-    int byte;
+void fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize, ParserState *parserState) {
+    size_t bytes_read = 0;
+
+    if (strstr( stream->mapping.data ,"H Data") && *parserState == PARSER_STATE_DATA) { // Always searching for header in stream.
+        *parserState = PARSER_STATE_HEADER;
+        bytesParsedDataSize = strstr(stream->mapping.data, "H Data") - stream->mapping.data; //Jump to start of headder
+    }
 
     bytes_read = bytesParsedDataSize;
-    //char *ret = NULL;
-    if ( strstr( stream->mapping.data ,"H") && strstr( stream->mapping.data+1 ," ") && strstr( stream->mapping.data+2 ,"P") && strstr( stream->mapping.data+2 ,"r") ) { //new stream found
-        *parserState = PARSER_STATE_HEADER;getchar();
-        
-    }
-    
-    if ( bytesParsedDataSize >= FLIGHT_LOG_MAX_FRAME_LENGTH ) { // First fill
-        for ( size_t i=0;i < FLIGHT_LOG_MAX_FRAME_LENGTH;++i ) { //fill the rest of the buffer
-            read(stream->mapping.fd, &byte, 1 ); 
+
+    if (bytesParsedDataSize >= FLIGHT_LOG_MAX_FRAME_LENGTH) { // First fill
+        for (size_t i = 0;i < FLIGHT_LOG_MAX_FRAME_LENGTH; ++i) { //fill the rest of the buffer
+            int byte = 0;
+            read(stream->mapping.fd, &byte, 1);
             stream->mapping.data[i] = byte;
         }
     } else {
-        while ( bytes_read <  FLIGHT_LOG_MAX_FRAME_LENGTH ) { //move data down to beginning of buffer.
+        while (bytes_read < FLIGHT_LOG_MAX_FRAME_LENGTH) { //move data down to beginning of buffer.
             stream->mapping.data[bytes_read - bytesParsedDataSize] = stream->mapping.data[bytes_read];
             bytes_read++;
         }
-        size_t topup=bytes_read - bytesParsedDataSize;
-        while ( topup < FLIGHT_LOG_MAX_FRAME_LENGTH ) { //fill the rest of the buffer
-            read(stream->mapping.fd, &byte, 1 ); 
+        size_t topup = bytes_read - bytesParsedDataSize;
+        while (topup < FLIGHT_LOG_MAX_FRAME_LENGTH) { //fill the rest of the buffer
+            int byte = 0;
+            read(stream->mapping.fd, &byte, 1 );
             stream->mapping.data[topup] = byte;
             topup++;
         }
     }
 
     stream->pos = stream->mapping.data;
-        
-    return 0;
+
 }
 
 uint32_t streamReadUnsignedVB(mmapStream_t *stream)

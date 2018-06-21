@@ -22,13 +22,12 @@ typedef struct mmapStream_t {
     bool eof;
 } mmapStream_t;
 
-typedef enum ParserState
-{
+typedef enum ParserState {
     PARSER_STATE_HEADER = 0,
     PARSER_STATE_DATA
 } ParserState;
 
-int fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize,ParserState *parserState);
+void fillSerialBuffer(mmapStream_t *stream,size_t bytesParsedDataSize, ParserState *parserState);
 mmapStream_t* streamCreate(int fd);
 void streamDestroy(mmapStream_t *stream);
 

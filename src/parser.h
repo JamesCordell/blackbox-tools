@@ -12,6 +12,7 @@
 #define FLIGHT_LOG_MAX_LOGS_IN_FILE 31
 #define FLIGHT_LOG_MAX_FIELDS 128
 #define FLIGHT_LOG_MAX_FRAME_LENGTH 1024
+#define FLIGHT_LOG_MAX_FRAME_HEADER_LENGTH 1024
 
 #define FLIGHT_LOG_FIELD_INDEX_ITERATION 0
 #define FLIGHT_LOG_FIELD_INDEX_TIME 1
@@ -25,8 +26,6 @@ typedef enum FirmwareType {
     FIRMWARE_TYPE_CLEANFLIGHT,
 	FIRMWARE_TYPE_BETAFLIGHT
 } FirmwareType;
-
-
 
 typedef struct flightLogFrameStatistics_t {
     uint32_t bytes;

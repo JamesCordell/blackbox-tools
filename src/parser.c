@@ -32,6 +32,10 @@
 #define MAXIMUM_ITERATION_JUMP_BETWEEN_FRAMES (500 * 10)
 
 static bool runonce = false;
+union {
+    float f;
+    uint32_t u;
+} floatConvert;
 
 typedef void (*FlightLogFrameParse)(flightLog_t *log, mmapStream_t *stream, bool raw);
 typedef bool (*FlightLogFrameComplete)(flightLog_t *log, mmapStream_t *stream, uint8_t frameType, const char *frameStart, const char *frameEnd, bool raw);
@@ -286,27 +290,21 @@ static void identifyFields(flightLog_t * log, uint8_t frameType, flightLogFrameD
     }
 }
 
-static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState *parserState)
-{
-    char *fieldName, *fieldValue;
-    const char *lineStart, *lineEnd, *separatorPos;
-    char valueBuffer[FLIGHT_LOG_MAX_FRAME_LENGTH] = {0};
-    union {
-        float f;
-        uint32_t u;
-    } floatConvert;
+static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState *parserState) {
 
-    if (streamReadChar(stream) != 'H')
+    if (streamReadByte(stream) != 'H') {
         return 0;
-
-    if (streamReadChar(stream) != ' ')
+    }
+    
+    if (streamReadByte(stream) != ' ') {
         return 1;
+    }
 
-    lineStart = stream->pos;
-    separatorPos = 0;
-    size_t frameSize=0;
-
-    while ( frameSize < FLIGHT_LOG_MAX_FRAME_LENGTH ) {
+    const char *lineStart = stream->pos;
+    char valueBuffer[FLIGHT_LOG_MAX_FRAME_HEADER_LENGTH];
+    const char *separatorPos = 0;
+    size_t i = 0;
+    for ( ; i < FLIGHT_LOG_MAX_FRAME_HEADER_LENGTH; ++i) {
         char c = streamReadChar(stream);
 
         if (c == ':' && !separatorPos) {
@@ -314,28 +312,27 @@ static size_t parseHeaderLine(flightLog_t *log, mmapStream_t *stream,ParserState
         }
 
         if (c == '\n') {
-            frameSize++;
+            i++;//size includes the newline.
             break;
         }
 
         if (c == EOF || c == '\0') {
             // Line ended before we saw a newline or it has binary stuff in there that shouldn't be there
-            return frameSize;
+            return i;
         }
-        valueBuffer[frameSize] = c;
-        frameSize++;
+        valueBuffer[i] = c;
     }
-    frameSize += 2;//We read two bytes above.
-
-    if (!separatorPos)
+    size_t frameSize = i+2; //We have read two bytes previously.
+    if (!separatorPos) {
         return frameSize;
+    }
 
-    lineEnd = stream->pos;
+    const char *lineEnd = stream->pos;
 
-    fieldName = valueBuffer;
+    char *fieldName = valueBuffer;
     valueBuffer[separatorPos - lineStart] = '\0';
 if ( strstr(fieldName,"features") ) {printf("found end of headder\n");getchar(); *parserState = 3; }
-    fieldValue = valueBuffer + (separatorPos - lineStart) + 1;
+    char *fieldValue = valueBuffer + (separatorPos - lineStart) + 1;
     valueBuffer[lineEnd - lineStart - 1] = '\0';
 
     if (startsWith(fieldName, "Field ")) {
@@ -412,7 +409,6 @@ if ( strstr(fieldName,"features") ) {printf("found end of headder\n");getchar();
         log->sysConfig.currentMeterScale = currentMeterParams[1];
     } else if (strcmp(fieldName, "gyro.scale") == 0 || strcmp(fieldName, "gyro_scale") == 0) {
         floatConvert.u = strtoul(fieldValue, 0, 16);
-
         log->sysConfig.gyroScale = floatConvert.f;
 
         /* Baseflight uses a gyroScale that'll give radians per microsecond as output, whereas Cleanflight produces degrees
@@ -425,12 +421,10 @@ if ( strstr(fieldName,"features") ) {printf("found end of headder\n");getchar();
     } else if (strcmp(fieldName, "acc_1G") == 0) {
         log->sysConfig.acc_1G = atoi(fieldValue);
     } else if (strcmp(fieldName, "motorOutput") == 0) {
-    	int motorOutputs[2];
-
-    	parseCommaSeparatedIntegers(fieldValue, motorOutputs, 2);
-
-		log->sysConfig.motorOutputLow = motorOutputs[0];
-		log->sysConfig.motorOutputHigh = motorOutputs[1];
+        int motorOutputs[2];
+        parseCommaSeparatedIntegers(fieldValue, motorOutputs, 2);
+        log->sysConfig.motorOutputLow = motorOutputs[0];
+        log->sysConfig.motorOutputHigh = motorOutputs[1];
      }
      return frameSize;
 }
@@ -1266,9 +1260,7 @@ static void resetSysConfigToDefaults(flightLogSysConfig_t *config)
     config->firmwareType = FIRMWARE_TYPE_UNKNOWN;
 }
 
-bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMetadataReady, FlightLogFrameReady onFrameReady, FlightLogEventReady onEvent, bool raw)
-{
-    
+bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMetadataReady, FlightLogFrameReady onFrameReady, FlightLogEventReady onEvent, bool raw) {
     ParserState parserState = PARSER_STATE_HEADER;
     const flightLogFrameType_t *frameType = 0;
 
