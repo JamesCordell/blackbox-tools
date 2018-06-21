@@ -1395,16 +1395,16 @@ bool flightLogParse(flightLog_t *log, int logIndex, FlightLogMetadataReady onMet
 
         } else {
 
-            if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR ) {
-            fillSerialBuffer(private->stream,1,&parserState);
-                if ( parserState ==  PARSER_STATE_HEADER ) {getchar();
+            if ((private->stream->mapping.stats.st_mode & S_IFMT) == S_IFCHR) {
+                fillSerialBuffer(private->stream,1,&parserState);
+                if (parserState ==  PARSER_STATE_HEADER) {getchar();
                     break;
                 }
             } else {
-                if ( private->stream->eof) {
-                    break;
-                }
                 streamReadByte(private->stream);
+            }
+            if (private->stream->eof) {
+                break;
             }
         }
     }
